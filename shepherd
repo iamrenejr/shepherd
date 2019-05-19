@@ -11,6 +11,7 @@ update_services() {
   local supports_registry_auth=$3
   local detach_option=""
   local registry_auth=""
+  local slack_url=$4
 
   [ $supports_detach_option = true ] && detach_option="--detach=false"
   [ $supports_registry_auth = true ] && registry_auth="--with-registry-auth"
@@ -30,13 +31,15 @@ update_services() {
         echo "No updates to service $name!"
       else
         echo "Service $name was updated!"
+        ok_headers="Content-Type: application/json"
+        ok_notice=$(curl -H $ok_headers --data '{"attachments":[{"color":"#2eb886", "text":"Service '"$name"' was updated!"}]}' $slack_url)
       fi
     fi
   done
 }
 
 main() {
-  local blacklist sleep_time supports_detach_option supports_registry_auth
+  local blacklist sleep_time supports_detach_option supports_registry_auth slack_url
   blacklist="${BLACKLIST_SERVICES:-}"
   sleep_time="${SLEEP_TIME:-5m}"
 
@@ -52,10 +55,16 @@ main() {
     echo "Send registry authentication details to swarm agents"
   fi
 
+  slack_url=""
+  if [[ ${SLACK_URL} ]]; then
+    slack_url=${SLACK_URL}
+    echo "Will send notifications to your slack channel"
+  fi
+
   [[ "$blacklist" != "" ]] && echo "Excluding services: $blacklist"
 
   while true; do
-    update_services "$blacklist" "$supports_detach_option" "$supports_registry_auth"
+    update_services "$blacklist" "$supports_detach_option" "$supports_registry_auth" "$slack_url"
     echo "Sleeping $sleep_time before next update"
     sleep "$sleep_time"
   done
