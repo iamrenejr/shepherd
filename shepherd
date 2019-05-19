@@ -5,6 +5,17 @@ server_version() {
   docker version -f "{{.Server.Version}}"
 }
 
+notify_slack() {
+  local slack_url=$1
+  local msg=$2
+  local headers="Content-Type: application/json"
+  local color='"color":"#2eb886"'
+  local data='{"attachments":[{'"$color"', "text":"'"$msg"'"}]}'
+  if [[ $slack_url != "" ]]; then
+    curl -H $headers --data $data $slack_url
+  fi
+}
+
 update_services() {
   local blacklist="$1"
   local supports_detach_option=$2
@@ -31,8 +42,7 @@ update_services() {
         echo "No updates to service $name!"
       else
         echo "Service $name was updated!"
-        ok_headers="Content-Type: application/json"
-        ok_notice=$(curl -H $ok_headers --data '{"attachments":[{"color":"#2eb886", "text":"Service '"$name"' was updated!"}]}' $slack_url)
+        notify_slack $slack_url "Service $name was updated!"
       fi
     fi
   done
